@@ -1,5 +1,4 @@
 ///<reference path="types.ts" />
-
 import express from "express";
 import { remove, isEmpty, slice, concat } from "lodash/fp";
 import {
@@ -22,6 +21,7 @@ import {
   isTransactionPublicQSValidator,
 } from "./validators";
 import { getPaginatedItems } from "../src/utils/transactionUtils";
+import { checarFraude } from "./fraud-check";
 const router = express.Router();
 
 // Routes
@@ -146,6 +146,25 @@ router.post(
 
     /* istanbul ignore next */
     const transaction = createTransaction(req.user?.id!, transactionType, transactionPayload);
+
+    // Fraude: best-effort, não-bloqueante. Não usa await antes de res.json —
+    // dispara e segue. Fase 2.4: só log no console; exibir na UI é passo
+    // separado (fora deste escopo).
+    checarFraude(req.user?.id!, transaction.amount / 100, transactionPayload.location)
+      .then((resultado) => {
+        if (resultado) {
+          console.log(
+            `[fraud-check] transactionId=${transaction.id} fraude_provavel=${resultado.fraude_provavel} probabilidade=${resultado.probabilidade}`
+          );
+        } else {
+          console.log(`[fraud-check] transactionId=${transaction.id} — verificação indisponível (best-effort)`);
+        }
+      })
+      .catch((err) => {
+        // não deveria ocorrer (checarFraude já captura tudo), mantido por
+        // segurança — nunca deve afetar a resposta já enviada.
+        console.warn(`[fraud-check] erro inesperado transactionId=${transaction.id}:`, err);
+      });
 
     res.status(200);
     res.json({ transaction });

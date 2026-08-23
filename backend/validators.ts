@@ -82,6 +82,7 @@ export const isTransactionPayloadValidator = [
   body("transactionType").isIn(["payment", "request"]).trim(),
   body("privacyLevel").optional().isIn(DefaultPrivacyLevelValues).trim(),
   body("source").optional().isString().trim(),
+  body("location").optional().isString().trim(), // novo — Fase 2.4
   body("receiverId").isString().trim(),
   body("description").isString().trim(),
   body("amount").isNumeric().trim().toInt(),
