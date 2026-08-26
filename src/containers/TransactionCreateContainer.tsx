@@ -63,9 +63,10 @@ const TransactionCreateContainer: React.FC<Props> = ({ authService, snackbarServ
 
   const showSnackbar = (payload: SnackbarContext) => sendSnackbar({ type: "SHOW", ...payload });
 
-  // Fase 3.4 (prep): escuta o filho transactionDataMachine (invocado dentro de
-  // stepTwo) para acessar a resposta real do POST /transactions, sem alterar
-  // a transição CREATE -> stepThree existente (Opção 2 aprovada).
+  // Fase 2.4/3.4: escuta o filho transactionDataMachine (invocado no nível raiz
+  // de createTransactionMachine, para sobreviver à transição stepTwo -> stepThree)
+  // para acessar a resposta real do POST /transactions, incluindo o resultado da
+  // checagem de fraude, e exibir alerta na UI quando aplicável.
   useEffect(() => {
     const child = createTransactionService.children.get("transactionDataMachine");
     if (!child) return;
