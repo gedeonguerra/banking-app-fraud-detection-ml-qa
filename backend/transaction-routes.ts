@@ -138,7 +138,7 @@ router.post(
   "/",
   ensureAuthenticated,
   validateMiddleware(isTransactionPayloadValidator),
-  (req, res) => {
+  async (req, res) => {
     const transactionPayload = req.body;
     const transactionType = transactionPayload.transactionType;
 
@@ -147,27 +147,28 @@ router.post(
     /* istanbul ignore next */
     const transaction = createTransaction(req.user?.id!, transactionType, transactionPayload);
 
-    // Fraude: best-effort, não-bloqueante. Não usa await antes de res.json —
-    // dispara e segue. Fase 2.4: só log no console; exibir na UI é passo
-    // separado (fora deste escopo).
-    checarFraude(req.user?.id!, transaction.amount / 100, transactionPayload.location)
-      .then((resultado) => {
-        if (resultado) {
-          console.log(
-            `[fraud-check] transactionId=${transaction.id} fraude_provavel=${resultado.fraude_provavel} probabilidade=${resultado.probabilidade}`
-          );
-        } else {
-          console.log(`[fraud-check] transactionId=${transaction.id} — verificação indisponível (best-effort)`);
-        }
-      })
-      .catch((err) => {
-        // não deveria ocorrer (checarFraude já captura tudo), mantido por
-        // segurança — nunca deve afetar a resposta já enviada.
-        console.warn(`[fraud-check] erro inesperado transactionId=${transaction.id}:`, err);
-      });
+    // Fase 3.4 (prep): aguardado (await) para que a resposta já inclua o
+    // resultado da checagem de fraude, permitindo o frontend exibir alerta.
+    // checarFraude tem timeout de 1.5s e NUNCA lança exceção (retorna null em
+    // qualquer falha) — o saldo já foi movimentado de forma síncrona acima,
+    // isso não afeta a transação em si, só adiciona até 1.5s de latência na
+    // resposta em caso de falha/timeout do ml-service.
+    const resultado = await checarFraude(
+      req.user?.id!,
+      transaction.amount / 100,
+      transactionPayload.location
+    );
+
+    if (resultado) {
+      console.log(
+        `[fraud-check] transactionId=${transaction.id} fraude_provavel=${resultado.fraude_provavel} probabilidade=${resultado.probabilidade}`
+      );
+    } else {
+      console.log(`[fraud-check] transactionId=${transaction.id} — verificação indisponível (best-effort)`);
+    }
 
     res.status(200);
-    res.json({ transaction });
+    res.json({ transaction, fraudCheck: resultado });
   }
 );
 

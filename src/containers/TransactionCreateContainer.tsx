@@ -15,7 +15,12 @@ import {
   TypegenDisabled,
 } from "xstate";
 import { AuthMachineContext, AuthMachineEvents, AuthMachineSchema } from "../machines/authMachine";
-import { SnackbarSchema, SnackbarContext, SnackbarEvents } from "../machines/snackbarMachine";
+import {
+  SnackbarSchema,
+  SnackbarContext,
+  SnackbarEvents,
+  Severities,
+} from "../machines/snackbarMachine";
 import { Stepper, Step, StepLabel } from "@mui/material";
 
 export interface Props {
@@ -57,6 +62,29 @@ const TransactionCreateContainer: React.FC<Props> = ({ authService, snackbarServ
   const userListSearch = debounce(200, (payload: any) => sendUsers({ type: "FETCH", ...payload }));
 
   const showSnackbar = (payload: SnackbarContext) => sendSnackbar({ type: "SHOW", ...payload });
+
+  // Fase 3.4 (prep): escuta o filho transactionDataMachine (invocado dentro de
+  // stepTwo) para acessar a resposta real do POST /transactions, sem alterar
+  // a transição CREATE -> stepThree existente (Opção 2 aprovada).
+  useEffect(() => {
+    const child = createTransactionService.children.get("transactionDataMachine");
+    if (!child) return;
+
+    // @ts-ignore - child é um Interpreter (máquina invocada), expõe subscribe
+    const subscription = child.subscribe((state: any) => {
+      if (state.history?.matches("creating") && state.matches("loading")) {
+        const fraudCheck = state.event?.data?.fraudCheck;
+        if (fraudCheck?.fraude_provavel) {
+          showSnackbar({
+            severity: Severities.warning,
+            message: `Possível fraude detectada nesta transação (probabilidade: ${(fraudCheck.probabilidade * 100).toFixed(0)}%)`,
+          });
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [createTransactionService, showSnackbar]);
 
   let activeStep;
   if (createTransactionState.matches("stepTwo")) {

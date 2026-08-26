@@ -19,6 +19,7 @@ export interface Transaction {
   source: string; // Empty if Payment or Request; Populated with BankAccount ID
   amount: number;
   description: string;
+  location?: string;
   privacyLevel: DefaultPrivacyLevel;
   receiverId: string;
   senderId: string;
@@ -36,6 +37,7 @@ export interface FakeTransaction {
   source?: string; // Empty if Payment or Request; Populated with BankAccount ID
   amount?: number;
   description?: string;
+  location?: string;
   privacyLevel?: DefaultPrivacyLevel;
   receiverId: string;
   senderId: string;
@@ -64,7 +66,7 @@ export type TransactionScenario = {
 export type TransactionPayload = Omit<Transaction, "id" | "uuid" | "createdAt" | "modifiedAt">;
 
 export type TransactionCreatePayload = Partial<
-  Pick<Transaction, "senderId" | "receiverId" | "description"> & {
+  Pick<Transaction, "senderId" | "receiverId" | "description" | "location"> & {
     amount: string;
     transactionType: string;
   }

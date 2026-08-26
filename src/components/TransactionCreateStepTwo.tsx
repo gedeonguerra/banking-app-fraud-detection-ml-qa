@@ -34,6 +34,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 const validationSchema = object({
   amount: number().required("Please enter a valid amount"),
   description: string().required("Please enter a note"),
+  location: string(),
   senderId: string(),
   receiverId: string(),
 });
@@ -75,6 +76,7 @@ export interface TransactionCreateStepTwoProps {
 interface FormValues {
   amount: number | "";
   description: string;
+  location: string;
   senderId: string;
   receiverId: string;
 }
@@ -89,6 +91,7 @@ const TransactionCreateStepTwo: React.FC<TransactionCreateStepTwoProps> = ({
   const initialValues: FormValues = {
     amount: "",
     description: "",
+    location: "",
     senderId: sender.id,
     receiverId: receiver.id,
   };
@@ -161,6 +164,22 @@ const TransactionCreateStepTwo: React.FC<TransactionCreateStepTwoProps> = ({
                     type="text"
                     placeholder="Add a note"
                     data-test={"transaction-create-description-input"}
+                    error={(touched || value !== initialValue) && Boolean(error)}
+                    helperText={touched || value !== initialValue ? error : ""}
+                    {...field}
+                  />
+                )}
+              </Field>
+              <Field name="location">
+                {({ field, meta: { error, value, initialValue, touched } }: FieldProps) => (
+                  <TextField
+                    variant="outlined"
+                    margin="dense"
+                    fullWidth
+                    id={"transaction-create-location-input"}
+                    type="text"
+                    placeholder="Location (optional)"
+                    data-test={"transaction-create-location-input"}
                     error={(touched || value !== initialValue) && Boolean(error)}
                     helperText={touched || value !== initialValue ? error : ""}
                     {...field}
