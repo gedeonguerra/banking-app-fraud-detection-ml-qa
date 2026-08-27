@@ -48,7 +48,7 @@ jobs:
         run: |
           cd ml-service
           nohup uvicorn api:app --host 0.0.0.0 --port 8000 > /tmp/ml-service.log 2>&1 &
-      - name: "Esperar ml-service (GET /health — http-get:// força GET, wait-on usa HEAD por padrão e /health só aceita GET -> 405)"
+      - name: "Esperar ml-service (GET /health via http-get://)"
         run: npx wait-on http-get://localhost:8000/health --timeout 30000
 
       - uses: actions/setup-node@v4
@@ -58,10 +58,15 @@ jobs:
       - name: Instalar dependências Node
         run: yarn install --frozen-lockfile
 
+      - name: "Baixar data/database-seed.json (não versionado — /data está no .gitignore deliberadamente; runner novo nunca o tem, mesma limitação que já resolvemos manualmente no ambiente local)"
+        run: |
+          mkdir -p data
+          curl -sf -o data/database-seed.json https://raw.githubusercontent.com/cypress-io/cypress-realworld-app/develop/data/database-seed.json
+
       - name: Subir backend RWA + frontend (yarn start — seed automático via prestart, mesmo modo já validado manualmente, NÃO start:ci)
         run: nohup yarn start > /tmp/rwa.log 2>&1 &
 
-      - name: "Esperar frontend (3000) e backend (3001) — http-get:// por segurança, mesmo motivo do ml-service"
+      - name: "Esperar frontend (3000) e backend (3001) via http-get://"
         run: |
           npx wait-on http-get://localhost:3000 --timeout 60000
           npx wait-on http-get://localhost:3001/testData/users --timeout 60000
