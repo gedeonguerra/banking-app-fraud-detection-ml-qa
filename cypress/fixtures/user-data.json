@@ -1,10 +1,18 @@
 {
-    "userSucess": {
-      "username": "UserTest",
-      "password": "1234"
-    },
-    "userFail": {
-      "username": "UserTestFail",
-      "password": "passwordTeste"
-    }
+  "userSucess": {
+    "username": "Arvilla_Hegmann",
+    "password": "s3cret"
+  },
+  "userVeteran": {
+    "username": "Arvilla_Hegmann",
+    "password": "s3cret"
+  },
+  "userWithHistory": {
+    "username": "Dina20",
+    "password": "s3cret"
+  },
+  "userFail": {
+    "username": "UserTestFail",
+    "password": "passwordTeste"
   }
+}

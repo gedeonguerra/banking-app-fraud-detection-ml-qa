@@ -4,6 +4,7 @@
 import { pick } from "lodash/fp";
 import { format as formatDate } from "date-fns";
 import { isMobile } from "./utils";
+import { faker } from "@faker-js/faker"; // já é dependência do projeto (package.json), mesma lib usada em scripts/seedDataUtils.ts
 
 // Import Cypress Percy plugin command (https://docs.percy.io/docs/cypress)
 import "@percy/cypress";
@@ -163,6 +164,46 @@ Cypress.Commands.add("loginByXstate", (username, password = Cypress.env("default
       log.snapshot("after");
       log.end();
     });
+});
+
+// FASE 3.4 (correção de fragilidade pré-existente): cria um usuário NOVO em
+// runtime via cadastro real (mesmo fluxo de user.Page.js/user.spec.js, mas
+// com seletores próprios para não herdar o bug já conhecido de
+// filRegistrationUser, que ignora o parâmetro password e usa "4321" fixo).
+// Usuário recém-cadastrado nasce sem conta bancária e sem transações
+// (confirmado em authMachine.ts: performSignup faz POST /users e redireciona
+// para /signin sem autenticar automaticamente) — satisfaz o que
+// login.spec.js/payment.spec.js/history.spec.js esperam (modal de onboarding
+// pendente, histórico vazio), sem precisar editar o seed estático nem
+// arriscar dados órfãos em banktransfers.
+Cypress.Commands.add("createFreshUser", () => {
+  const uniqueUsername = `${faker.internet.userName()}${Date.now()}`;
+  const password = "TestPassword1!";
+
+  const log = Cypress.log({
+    name: "createFreshUser",
+    displayName: "CREATE FRESH USER",
+    message: [`👤 Registrando usuário novo | ${uniqueUsername}`],
+    // @ts-ignore
+    autoEnd: false,
+  });
+
+  cy.visit("/signup");
+  cy.get("[name='firstName']").type(faker.name.firstName());
+  cy.get("[name='lastName']").type(faker.name.lastName());
+  cy.get("[name='username']").type(uniqueUsername);
+  cy.get("[name='password']").type(password);
+  cy.get("[name='confirmPassword']").type(password);
+  cy.get("[type='submit']").click();
+
+  // Aguarda a navegação real para /signin antes de liberar as credenciais —
+  // evita corrida de timing com o login que vem em seguida no teste.
+  cy.location("pathname", { timeout: 10000 }).should("eq", "/signin");
+
+  log.snapshot("after");
+  log.end();
+
+  return cy.wrap({ username: uniqueUsername, password });
 });
 
 Cypress.Commands.add("logoutByXstate", () => {

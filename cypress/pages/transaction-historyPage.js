@@ -5,6 +5,11 @@ class HitoryPage {
         const selectors = {
             // Container principal da página, usado para verificar se a página carregou
             checkPage: '.MuiPaper-elevation1',
+            // Aba "Mine" (rota /personal) — lista só as transações do próprio usuário
+            // logado, imune ao volume/paginação do feed público global (Fase 3.4,
+            // correção de fragilidade: transação hardcoded era empurrada para
+            // páginas seguintes do feed público conforme a suíte gera mais dados)
+            mineTab: "[data-test='nav-personal-tab']",
             // Elemento que representa uma transação específica para clicar
             checkTransaction: "[data-test='transaction-amount-6XY0Ud1i8sp4']",
             // Container que mostra os detalhes da transação após clique
@@ -21,6 +26,11 @@ class HitoryPage {
     successfulViewing() {
         // Confirma que a página de histórico foi carregada corretamente
         cy.get(this.selectorsList().checkPage).should('contain', 'Public')
+
+        // Navega para a aba pessoal (Mine/Personal) — lista estável, não sofre
+        // com paginação do feed público global
+        cy.get(this.selectorsList().mineTab).click()
+        cy.get(this.selectorsList().checkPage).should('contain', 'Personal')
 
         // Clica em uma transação específica
         cy.get(this.selectorsList().checkTransaction).click()
