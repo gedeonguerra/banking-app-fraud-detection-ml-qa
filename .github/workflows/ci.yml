@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  testes-python:
+    name: "Camadas 1-3 (Python) — dados, modelo, API (tests/api/*.py, NÃO cypress/tests/api)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependências Python (ml-service/requirements.txt + pytest + httpx)
+        run: pip install -r ml-service/requirements.txt pytest httpx
+
+      - name: "Camada 1 — Qualidade de dados (tests/data/test_dataset_quality.py)"
+        run: pytest tests/data/test_dataset_quality.py -v
+
+      - name: "Camada 2 — Qualidade do modelo (tests/model/test_model_quality.py, usa baseline_metricas.json commitado)"
+        run: pytest tests/model/test_model_quality.py -v
+
+      - name: "Camada 3 — Contrato da API Python via TestClient in-process (tests/api/test_predict_fraud_contract.py — SEM uvicorn)"
+        run: pytest tests/api/test_predict_fraud_contract.py -v
+
+  testes-e2e-node-cypress:
+    name: "Camada 4 — E2E (cypress/tests/e2e/*.spec.js) — backend RWA + ml-service reais, via HTTP de verdade"
+    runs-on: ubuntu-latest
+    needs: testes-python
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Instalar dependências Python (ml-service)
+        run: pip install -r ml-service/requirements.txt
+
+      - name: Subir ml-service real (uvicorn, porta 8000 — fixa, hardcoded em fraud-check.ts)
+        run: |
+          cd ml-service
+          nohup uvicorn api:app --host 0.0.0.0 --port 8000 > /tmp/ml-service.log 2>&1 &
+      - name: Esperar ml-service (GET /health)
+        run: npx wait-on http://localhost:8000/health --timeout 30000
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+      - name: Instalar dependências Node
+        run: yarn install --frozen-lockfile
+
+      - name: Subir backend RWA + frontend (yarn start — seed automático via prestart, mesmo modo já validado manualmente, NÃO start:ci)
+        run: nohup yarn start > /tmp/rwa.log 2>&1 &
+
+      - name: Esperar frontend (3000) e backend (3001)
+        run: |
+          npx wait-on http://localhost:3000 --timeout 60000
+          npx wait-on tcp:3001 --timeout 60000
+
+      - name: Rodar Cypress E2E (cypress/tests/e2e/*.spec.js — inclui fraud-alert.spec.js)
+        uses: cypress-io/github-action@v6
+        with:
+          browser: chrome
+          spec: cypress/tests/e2e/*.spec.js
+          install: false
+
+      - name: Upload de logs dos servidores (só se falhar)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            /tmp/ml-service.log
+            /tmp/rwa.log
