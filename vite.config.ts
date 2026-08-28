@@ -19,7 +19,7 @@ export default defineConfig(({ command, mode }) => {
     },
     plugins: [
       react(),
-      eslint(),
+      ...(process.env.CI ? [] : [eslint()]),
       istanbul({
         cypress: true,
         requireEnv: true,
