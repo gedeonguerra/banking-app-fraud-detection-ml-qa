@@ -10,7 +10,6 @@ import { createHandler as graphqlHandler } from "graphql-http/lib/use/express";
 import { loadSchemaSync } from "@graphql-tools/load";
 import { GraphQLFileLoader } from "@graphql-tools/graphql-file-loader";
 import { addResolversToSchema } from "@graphql-tools/schema";
-
 import auth from "./auth";
 import userRoutes from "./user-routes";
 import contactRoutes from "./contact-routes";
@@ -54,7 +53,6 @@ app.use(cors(corsOption));
 app.use(logger("dev"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
 app.use(
   session({
     secret: "session secret",
@@ -65,7 +63,6 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
-
 app.use(paginate.middleware(+process.env.PAGINATION_PAGE_SIZE!));
 
 /* istanbul ignore next */
@@ -79,17 +76,14 @@ app.use(auth);
 if (process.env.VITE_AUTH0) {
   app.use(checkAuth0Jwt);
 }
-
 /* istanbul ignore if */
 if (process.env.VITE_OKTA) {
   app.use(verifyOktaToken);
 }
-
 /* istanbul ignore if */
 if (process.env.VITE_AWS_COGNITO) {
   app.use(checkCognitoJwt);
 }
-
 /* istanbul ignore if */
 if (process.env.VITE_GOOGLE) {
   app.use(checkGoogleJwt);
@@ -105,6 +99,7 @@ app.use(
     },
   })
 );
+
 app.use("/users", userRoutes);
 app.use("/contacts", contactRoutes);
 app.use("/bankAccounts", bankAccountRoutes);
@@ -117,5 +112,10 @@ app.use("/bankTransfers", bankTransferRoutes);
 app.use(express.static(join(__dirname, "../public")));
 
 getBackendPort().then((port) => {
-  app.listen(port);
+  if (!port) return;
+  if (process.env.CI) {
+    app.listen(port, "127.0.0.1");
+  } else {
+    app.listen(port);
+  }
 });
