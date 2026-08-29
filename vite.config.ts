@@ -12,6 +12,7 @@ export default defineConfig(({ command, mode }) => {
     },
     server: {
       port: 3000,
+      ...(process.env.CI ? { host: "127.0.0.1" } : {}),
     },
     build: {
       outDir: "build",
