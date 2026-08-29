@@ -66,6 +66,16 @@ jobs:
       - name: Subir backend RWA + frontend (yarn start — seed automático via prestart, mesmo modo já validado manualmente, NÃO start:ci)
         run: nohup yarn start > /tmp/rwa.log 2>&1 &
 
+      - name: Diagnóstico - o que responde de verdade na porta 3000
+        run: |
+          sleep 5
+          echo "--- curl -v raiz (/) ---"
+          curl -v http://127.0.0.1:3000/ || true
+          echo "--- curl -v rota interna do vite (/@vite/client, so o vite serve isso) ---"
+          curl -v http://127.0.0.1:3000/@vite/client || true
+          echo "--- curl -v backend (3001, deve ser 200 se for so a 3000 com problema) ---"
+          curl -v http://127.0.0.1:3001/testData/users || true
+
       - name: "Esperar frontend (3000) e backend (3001) via http-get://127.0.0.1 (não 'localhost' — evita ambiguidade IPv4/IPv6 no runner)"
         run: |
           npx wait-on --verbose http-get://127.0.0.1:3000 --timeout 60000
