@@ -30,6 +30,9 @@ jobs:
       - name: "Camada 3 — Contrato da API Python via TestClient in-process (tests/api/test_predict_fraud_contract.py — SEM uvicorn)"
         run: pytest tests/api/test_predict_fraud_contract.py -v
 
+      - name: "Camada 5 — Testes de LLM (tests/llm/*.py — prompt injection e qualidade/alucinação, determinísticos, sem custo; testes marcados @pytest.mark.live são pulados automaticamente sem OPENAI_API_KEY)"
+        run: pytest tests/llm/ -v
+
   testes-e2e-node-cypress:
     name: "Camada 4 — E2E (cypress/tests/e2e/*.spec.js) — backend RWA + ml-service reais, via HTTP de verdade"
     runs-on: ubuntu-latest
