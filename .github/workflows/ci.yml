@@ -67,19 +67,9 @@ jobs:
         run: |
           (yarn start 2>&1 | while IFS= read -r line; do echo "$(date +%H:%M:%S.%3N) $line"; done > /tmp/rwa.log 2>&1 &)
 
-      - name: Diagnóstico - timeline com timestamp (3000 e 3001)
-        run: |
-          for i in $(seq 1 20); do
-            ts=$(date +%H:%M:%S.%3N)
-            c3000=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3000/ 2>/dev/null || true)
-            c3001=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3001/testData/users 2>/dev/null || true)
-            echo "$ts  3000=$c3000  3001=$c3001"
-            sleep 2
-          done
-
       - name: "Esperar frontend (3000) e backend (3001) via http-get://127.0.0.1 (não 'localhost' — evita ambiguidade IPv4/IPv6 no runner)"
         run: |
-          npx wait-on --verbose http-get://127.0.0.1:3000 --timeout 60000
+          npx wait-on --verbose http-get://127.0.0.1:3000/index.html --timeout 60000
           npx wait-on --verbose http-get://127.0.0.1:3001/testData/users --timeout 60000
 
       - name: Rodar Cypress E2E (cypress/tests/e2e/*.spec.js — inclui fraud-alert.spec.js)
