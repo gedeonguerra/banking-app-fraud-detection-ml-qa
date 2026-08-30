@@ -71,8 +71,8 @@ jobs:
         run: |
           for i in $(seq 1 20); do
             ts=$(date +%H:%M:%S.%3N)
-            c3000=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3000/ 2>/dev/null)
-            c3001=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3001/testData/users 2>/dev/null)
+            c3000=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3000/ 2>/dev/null || true)
+            c3001=$(curl -s -o /dev/null -w "%{http_code}" -m 2 http://127.0.0.1:3001/testData/users 2>/dev/null || true)
             echo "$ts  3000=$c3000  3001=$c3001"
             sleep 2
           done
