@@ -1,229 +1,78 @@
-<p align="center">
-  <!-- Logo alternando para modo escuro e claro no GitHub -->
-  <img alt="Cypress Real World App Logo" src="./src/svgs/rwa-logo-light.svg#gh-dark-mode-only" />
-  <img alt="Cypress Real World App Logo" src="./src/svgs/rwa-logo.svg#gh-light-mode-only" />
-</p>
+# Banking App — Fraud Detection ML QA
 
-<p align="center">
-  <a href="https://cypress.io">
-    <img width="140" alt="Cypress Logo" src="./src/svgs/built-by-cypress.svg" />
-  </a>
-</p>
+> Fork do [Cypress Real World App](https://github.com/cypress-io/cypress-realworld-app) com uma feature de **detecção de fraude via Machine Learning** adicionada por cima, e uma pirâmide de testes que cobre dados, modelo, API, LLM e end-to-end.
 
-<p align="center">
-  <a href="https://cloud.cypress.io/projects/7s5okt/runs">
-    <img src="https://img.shields.io/endpoint?url=https://cloud.cypress.io/badge/detailed/7s5okt/develop&style=flat&logo=cypress" alt="Cypress Cloud Status" />
-  </a>
-  <a href="https://codecov.io/gh/cypress-io/cypress-realworld-app">
-    <img src="https://codecov.io/gh/cypress-io/cypress-realworld-app/branch/develop/graph/badge.svg" alt="Code Coverage" />
-  </a>
-  <a href="https://percy.io/cypress-io/cypress-realworld-app">
-    <img src="https://percy.io/static/images/percy-badge.svg" alt="Visual Testing Status" />
-  </a>
-  <a href="#contributors-">
-    <img src="https://img.shields.io/badge/all_contributors-6-green.svg?style=flat" alt="Contributors" />
-  </a>
-</p>
-
-# Cypress Real World App (RWA)
-
-> **Aplicacao de pagamento** para demonstrar o uso **real** do Cypress em testes, padroes e fluxos de trabalho modernos.
-
-<p align="center">
-  <img style="width: 70%" alt="Cypress Real World App Screenshot" src="./public/img/rwa-readme-screenshot.png" />
-</p>
+Projeto de portfólio pessoal de **Gedeon Guerra**, focado em QA Engineering com especialização em teste de sistemas de ML/IA.
 
 ---
 
-## 🚀 Sobre
+## O que este projeto é
 
-Este projeto é uma aplicação full-stack (React + Express) com banco de dados JSON local, criada para fins educacionais e de demonstração, simulando um ambiente real de testes com Cypress.
-É perfeita para aprender, experimentar e desenvolver suas habilidades em testes automatizados.
+A base é a aplicação bancária de demonstração da Cypress (React + Express). Em cima dela foi adicionada uma feature própria: ao criar uma transação, ela passa por um classificador de fraude (scikit-learn) e, se marcada como suspeita, a aplicação exibe um alerta e o usuário pode pedir uma explicação em linguagem natural gerada por um LLM.
 
-> 💬 **Nota importante:**
-> Esta aplicação NÃO é um sistema de produção completo, e sim uma plataforma para aprendizado e experimentação.
+O objetivo não é a feature em si — é usar essa feature como pretexto para montar e documentar uma pirâmide de testes completa em cima de um sistema com ML e LLM embutidos, do jeito que um QA real precisaria testar.
 
----
+## O que diferencia este fork do original
 
-## 💡 Principais Recursos
+O RWA original testa uma aplicação de pagamentos comum (UI, API, componentes). Este fork adiciona uma camada que a maioria dos projetos de portfólio de QA não tem: teste de um pipeline de Machine Learning e de uma integração com LLM, com as preocupações específicas que cada um exige — qualidade de dataset, regressão de métricas de modelo, contrato de API, alucinação, prompt injection e timeout/resiliência.
 
-* 🛠 Construído com [React](https://reactjs.org), [XState](https://xstate.js.org), [Express](https://expressjs.com), [lowdb](https://github.com/typicode/lowdb), [Material-UI](https://material-ui.com) e [TypeScript](https://typescriptlang.org).
-* ⚡ Zero dependência de banco de dados real — usa JSON local.
-* 🚀 Aplicação full-stack com backend Express e frontend React, com funcionalidades e testes reais.
-* 👮‍♂️ Autenticação local integrada.
-* 🔥 Seed do banco atualizado automaticamente com testes E2E.
-* 💻 Integração CI/CD com [Cypress Cloud](https://cloud.cypress.io).
+## A feature: detecção de fraude
 
----
+- **Modelo:** `RandomForestClassifier` (scikit-learn), treinado sobre um dataset sintético de 5.000 transações (gerado com Faker, seed fixa), com desbalanceamento intencional de ~3% de fraude — reflete a realidade de detecção de fraude, não um dataset 50/50 artificial.
+- **API:** microserviço FastAPI (`ml-service/api.py`) com `GET /health` e `POST /predict-fraud`, threshold fixo em 0.5.
+- **Model Card documentado** (`ml-service/model_card.md`): métricas reais do modelo (precisão 0.88, recall 0.50, F1 0.64), com a causa raiz do recall limitado investigada e registrada — 8 de 14 falsos negativos vêm da falta de uma feature relacional entre localização da transação e o histórico do próprio usuário. É tratado explicitamente como um **modelo de demonstração educacional**, não um sistema de detecção de fraude pronto para produção.
+- **Explicação por LLM** (`ml-service/llm_explainer.py`): quando uma transação é marcada como suspeita, o usuário pode pedir uma explicação em linguagem natural do porquê. O LLM nunca decide se é fraude — só explica a decisão já tomada pelo modelo, usando exclusivamente os dados estruturados da transação.
 
-## 📦 Começando
+## Pirâmide de testes
 
-### Pré-requisitos
+| Camada | O quê | Onde | Como roda |
+|---|---|---|---|
+| 1 — Dados | Qualidade e integridade do dataset sintético | `tests/data/test_dataset_quality.py` | `pytest` |
+| 2 — Modelo | Regressão de métricas contra um baseline commitado (`baseline_metricas.json`) | `tests/model/test_model_quality.py` | `pytest` |
+| 3 — API | Contrato da API de predição, in-process via `TestClient` (sem subir servidor) | `tests/api/test_predict_fraud_contract.py` | `pytest` |
+| 4 — E2E | Fluxo completo na UI, com backend, frontend e ml-service reais rodando via HTTP | `cypress/tests/e2e/fraud-alert.spec.js` | Cypress |
+| 5 — LLM | Prompt injection (OWASP LLM01), alucinação/fundamentação e resiliência a timeout | `tests/llm/` | `pytest` |
 
-* [Node.js](https://nodejs.org/en/) (versão exata especificada em `.node-version`)
-* [Yarn Classic (v1)](https://classic.yarnpkg.com/)
+A Camada 5 é 100% determinística e sem custo: os testes que dependem de uma API real de LLM são marcados com `@pytest.mark.live` e pulados automaticamente sem `OPENAI_API_KEY` no ambiente — o mesmo princípio de "CI verde sem depender de conta paga" usado no resto do projeto. O teste de injection cobre tanto o isolamento do prompt (dado de usuário nunca é tratado como instrução) quanto a heurística de detecção, incluindo casos de falso positivo/negativo.
 
-> **Nota:** Este projeto não suporta Yarn Modern (v2 ou superior).
+## CI/CD
 
-Para instalar Yarn Classic globalmente (caso não use Corepack):
+Pipeline no GitHub Actions com dois jobs, o segundo dependente do primeiro (`needs:`):
+
+1. **Camadas 1, 2, 3 e 5 (Python)** — dados, modelo, contrato de API e testes de LLM, tudo `pytest`, sem precisar subir servidor.
+2. **Camada 4 (E2E)** — sobe o `ml-service` (uvicorn) e a aplicação (backend + frontend RWA) de verdade, espera os healthchecks (`wait-on`) e roda o Cypress contra o ambiente real.
+
+## Como rodar
 
 ```bash
-npm install yarn@latest -g
-```
-
----
-
-### Instalação
-
-```bash
-git clone https://github.com/cypress-io/cypress-realworld-app.git
-cd cypress-realworld-app
+# instala dependências JS
 yarn
-```
 
-> **Mac M1/ M2 users:**
-> Caso use Mac com chip Apple Silicon, execute para evitar baixar Chromium desnecessariamente:
->
-> ```bash
-> PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true yarn install
-> ```
+# instala dependências Python
+pip install -r ml-service/requirements.txt pytest httpx
 
----
+# roda as camadas 1, 2, 3 e 5 (pytest)
+pytest tests/data/ tests/model/ tests/api/ tests/llm/ -v
 
-### Executando a aplicação
+# sobe o ml-service
+cd ml-service && uvicorn api:app --reload
 
-```bash
+# sobe a aplicação (outro terminal, na raiz do projeto)
 yarn dev
-```
 
-A aplicação roda, por padrão, nas portas:
-
-* Frontend: `3000`
-* Backend API: `3001`
-
-> Para alterar essas portas, modifique as variáveis `PORT` e `VITE_BACKEND_PORT` no arquivo `.env`.
-> **Não comite** essas alterações para evitar conflitos com o CI.
-
----
-
-### Executando testes com Cypress
-
-Abra o Cypress UI:
-
-```bash
+# roda o E2E (Cypress)
 yarn cypress:open
 ```
 
-> Se alterou as portas, ajuste também `cypress.config.ts` para refletir as mudanças em:
->
-> * `e2e.baseUrl`
-> * `env.apiUrl`
-> * `env.url`
+## Metodologia
 
----
+Este projeto foi construído com apoio de ferramentas de IA como parte do fluxo de trabalho — da mesma forma que uso engenharia de prompt no meu dia a dia de QA. As decisões de arquitetura, o que testar em cada camada, a investigação da causa raiz da limitação do modelo (seção 4 do model card) e a validação de cada teste rodando de fato foram feitas e revisadas por mim.
 
-## 🧪 Tipos de Testes e Localização
+## Autor
 
-| Tipo de teste | Localização                                |
-| ------------- | ------------------------------------------ |
-| API           | [`cypress/tests/api`](./cypress/tests/api) |
-| UI            | [`cypress/tests/ui`](./cypress/tests/ui)   |
-| Componentes   | [`src`](./src)                             |
-| Unitários     | [`src/__tests__`](./src/__tests__)         |
+**Gedeon Guerra** — QA Engineer, em especialização em teste de sistemas de AI/ML.
 
----
-
-## 💄 Banco de Dados Local
-
-* Arquivo JSON local: [`data/database.json`](./data/database.json)
-* O banco é reinicializado (reseed) automaticamente a cada start (`yarn dev`) e entre testes E2E.
-* Frontend atualiza o banco via backend Express e utilitários dedicados.
-* Para gerar um novo seed:
-
-```bash
-yarn db:seed
-```
-
-* Seed vazio disponível para testes sem dados: [`data/empty-seed.json`](./data/empty-seed.json)
-* Para rodar com seed vazio:
-
-```bash
-yarn start:empty
-```
-
----
-
-## ⚙️ Scripts Úteis do NPM
-
-| Script           | Descrição                                                      |
-| ---------------- | -------------------------------------------------------------- |
-| `dev`            | Inicia backend (modo watch) + frontend                         |
-| `dev:coverage`   | Inicia backend + frontend com cobertura de código ativada      |
-| `dev:auth0`      | Inicia backend + frontend com Auth0 para autenticação          |
-| `dev:okta`       | Inicia backend + frontend com Okta para autenticação           |
-| `dev:cognito`    | Inicia backend + frontend com Amazon Cognito para autenticação |
-| `dev:google`     | Inicia backend + frontend com Google para autenticação         |
-| `start`          | Inicia backend e frontend (modo normal)                        |
-| `types`          | Valida tipos TypeScript                                        |
-| `db:seed`        | Gera novos seeds para o banco JSON                             |
-| `start:empty`    | Inicia backend, frontend e Cypress com banco vazio             |
-| `list:dev:users` | Lista usuários de exemplo no banco de desenvolvimento          |
-
----
-
-## 📊 Relatório de Cobertura de Código
-
-Utiliza [@cypress/code-coverage](https://github.com/cypress-io/code-coverage) para frontend e backend.
-
-Passos para gerar relatório:
-
-1. Execute `yarn dev:coverage` para iniciar com cobertura ativada.
-2. Rode os testes:
-
-```bash
-yarn cypress:run --env coverage=true
-```
-
-3. Após execução, visualize o relatório em `coverage/index.html`.
-
----
-
-## 🔐 Autenticação com Terceiros (3rd Party)
-
-Suporta múltiplos provedores de autenticação para fins educacionais:
-
-* **Auth0**
-* **Okta**
-* **Amazon Cognito**
-* **Google**
-
-> Para cada provedor, é necessário substituir o arquivo principal `src/index.tsx` pelo correspondente (`index.auth0.tsx`, `index.okta.tsx`, etc.) e rodar com o script dedicado (`yarn dev:auth0`, `yarn dev:okta` etc).
-
----
-
-## 📜 Licença
-
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/cypress-io/cypress/blob/master/LICENSE)
-
-Este projeto está licenciado sob os termos da licença MIT.
-
----
-
-## 🤝 Contribuidores
-
-<table>
-  <tr>
-    <td align="center"><a href="http://www.kevinold.com"><img src="https://avatars0.githubusercontent.com/u/21967?v=4" width="100" alt="Kevin Old" /><br /><sub><b>Kevin Old</b></sub></a></td>
-    <td align="center"><a href="https://twitter.com/amirrustam"><img src="https://avatars0.githubusercontent.com/u/334337?v=4" width="100" alt="Amir Rustamzadeh" /><br /><sub><b>Amir Rustamzadeh</b></sub></a></td>
-    <td align="center"><a href="https://twitter.com/be_mann"><img src="https://avatars2.githubusercontent.com/u/1268976?v=4" width="100" alt="Brian Mann" /><br /><sub><b>Brian Mann</b></sub></a></td>
-    <td align="center"><a href="https://glebbahmutov.com/"><img src="https://avatars1.githubusercontent.com/u/2212006?v=4" width="100" alt="Gleb Bahmutov" /><br /><sub><b>Gleb Bahmutov</b></sub></a></td>
-    <td align="center"><a href="http://www.bencodezen.io"><img src="https://avatars0.githubusercontent.com/u/4836334?v=4" width="100" alt="Ben Hong" /><br /><sub><b>Ben Hong</b></sub></a></td>
-    <td align="center"><a href="https://github.com/davidkpiano"><img src="https://avatars2.githubusercontent.com/u/1093738?v=4" width="100" alt="David Khourshid" /><br /><sub><b>David Khourshid</b></sub></a></td>
-  </tr>
-</table>
-
-Este projeto segue a especificação [all-contributors](https://github.com/all-contributors/all-contributors).
-Contribuições de qualquer tipo são bem-vindas!
+[GitHub](https://github.com/gedeonguerra) · [LinkedIn](#)
 
 ---
 
